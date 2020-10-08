@@ -1,0 +1,126 @@
+- name: remove mariadb-libs
+  yum:
+    name: mariadb-libs
+    state: absent
+- name: installed MySQL-python  
+  yum:
+    name: 
+      - MySQL-python  
+      - numactl
+    state: present
+- name: Add group {{ mysql_group }}
+  group: 
+    name: "{{ mysql_group }}"
+    state: present
+- name: Add user {{ mysql_user }}
+  user:
+    name: "{{ mysql_user }}"
+    state: present
+    group: "{{ mysql_group }}"
+    shell: /sbin/nologin
+    create_home: no
+
+- name: mkdir directory {{ datadir }} 
+  file: 
+    path: "{{ datadir }}"
+    state: directory
+    recurse: yes
+    owner: "{{mysql_group }}"
+    group: "{{ mysql_user }}"
+    mode: '0755'
+
+- name: mkdir directory "{{ logsdir }}"
+  file: 
+    path: "{{ logsdir }}"
+    state: directory
+    recurse: yes
+    owner: "{{mysql_group }}"
+    group: "{{ mysql_user }}"
+    mode: '0755'
+
+- name: copy {{ version }}
+  copy:
+    src: "{{ version }}"
+    dest: "{{ destdir }}"
+    owner: "{{ mysql_group }}"
+    group: "{{ mysql_user }}"
+    mode: '0755'
+
+- name: copy my.cnf and mysqld.service
+  template:
+    src: my.cnf.j2
+    dest: /etc/my.cnf
+    backup: yes
+
+- name: copy my.cnf and mysqld.service
+  template:
+    src: mysqld.service.j2
+    dest: /etc/systemd/system/mysqld.service
+    backup: yes
+
+- name: Add mysql path
+  lineinfile:
+    path: /etc/profile 
+    line: "export PATH=$PATH:{{ basedir }}/bin"
+- name: mysql server init
+  shell: '{{ basedir }}/bin/mysqld --initialize-insecure  --user={{ mysql_user }}  --basedir={{ basedir }} --datadir={{ datadir }}'
+
+- name: mysql service started
+  service:
+    name: mysqld
+    state: started
+    enabled: yes
+  notify:
+    - mysql service status 
+    - mysql_process_running
+
+- name: change mysql root password
+  shell: source /etc/profile && mysql -uroot -S {{ mysqlsock }} -e "SET PASSWORD = PASSWORD('{{ root_pass }}');flush privileges;"
+
+
+- name: create repl user {{ repl_user }}
+  mysql_user:
+    name: "{{ repl_user }}"
+    password: "{{ repl_pass }}"
+    host: '%'
+    priv: '*.*:ALL'
+    state: present
+    login_user: root
+    login_password: "{{ root_pass }}"
+    login_unix_socket: "{{mysqlsock}}"
+
+- name: copy /tmp/change_master.sh
+  template:
+    src: change_master.sh.j2
+    dest: /tmp/change_master.sh
+    mode: '0755'
+  when: mysql_role == "slave"
+
+
+- name: change master
+  shell: sh /tmp/change_master.sh
+  when: mysql_role == "slave"
+
+- name: Start slave
+  mysql_replication:
+    mode: startslave
+    login_user: root
+    login_password: "{{ root_pass }}"
+    login_unix_socket: "{{ mysqlsock }}"
+  notify: 
+    - Get Slave
+    - Slave_IO_Running
+    - Slave_SQL_Running
+  when: mysql_role == "slave"
+
+- name: service firewalld server
+  service:
+    name: firewalld
+    state: started
+- name: configure firewalld service
+  firewalld:
+    zone: public
+    port: 3306/tcp
+    permanent: yes
+    immediate: yes
+    state: enabled

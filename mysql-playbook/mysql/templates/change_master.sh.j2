@@ -1,0 +1,8 @@
+#!/bin/bash
+
+source /etc/profile
+binlog=$(mysql -u{{ repl_user }}  -h{{ master_ip }}  -p'{{ repl_pass }}' -e "show master status;" | grep mysql-bin | awk '{print $1}')
+
+pos=$(mysql -u{{ repl_user }}  -h{{ master_ip }}  -p'{{ repl_pass }}'  -e "show master status;" | grep mysql-bin | awk '{print $NF}') 
+
+mysql -uroot -p'{{ root_pass }}'  -e "change master to MASTER_HOST ='{{ master_ip }}',MASTER_USER ='{{ repl_user }}',MASTER_PASSWORD ='{{ repl_pass }}',MASTER_LOG_FILE = \"${binlog}\",MASTER_LOG_POS = ${pos}"

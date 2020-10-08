@@ -1,0 +1,27 @@
+[mysqld]
+user={{ mysql_user }}
+datadir={{ datadir }}
+basedir={{ basedir }}
+port=3306
+server_id={{ansible_default_ipv4.address.split('.')[-1]}}
+socket={{mysqlsock}}
+character-set-server = utf8mb4
+collation-server = utf8mb4_unicode_ci
+general_log=OFF
+general_log_file={{ logsdir }}/general.log
+slow_query_log=ON
+slow_query_log_file={{ logsdir }}/slowqueries.log
+long_query_time=5
+log_output='FILE,TABLE'
+log-error={{ logsdir }}/err.log
+log_bin={{ logsdir }}/mysql-bin
+sql_mode=NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER
+default-time_zone = '+8:00'	
+log_timestamps=SYSTEM
+max_connections=3000
+expire_logs_days=7
+
+[mysql]
+socket={{ mysqlsock }}
+prompt=3306 [\\d]>
+default-character-set = utf8mb4
