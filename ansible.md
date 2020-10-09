@@ -242,13 +242,9 @@ ansible-playbook -i hosts  test.yaml --skip-tags "test_install"
 
 
 
-
-
 ### Change_when
 
-```
 
-```
 
 
 
