@@ -1,5 +1,5 @@
 # Mysql-Playbook
-##### mysql 主从二进制安装
+#### mysql 主从二进制安装
 
 
 
